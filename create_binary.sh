@@ -1,0 +1,1 @@
+pyinstaller --onefolder rp/rp.py
