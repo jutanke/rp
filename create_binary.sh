@@ -1,1 +1,1 @@
-pyinstaller --onefolder rp/rp.py
+pyinstaller --noupx --onedir rp/rp.py

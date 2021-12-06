@@ -140,11 +140,21 @@ def get_gpus():
     for container_name in get_running_container_names():
 
         dev = subprocess.run(
-            ["docker",
-            "inspect",
-            "--format='{{json .HostConfig.DeviceRequests}}'",
-            container_name]
+            [
+                "docker",
+                "inspect",
+                "--format='{{json .HostConfig.DeviceRequests}}'",
+                container_name,
+            ],
             stdout=subprocess.PIPE,
         ).stdout.decode("utf-8")
+
+        if dev == "null":
+            pass  # no GPU
+        else:
+            dev = str(dev)[1:-2]
+            dev = json.loads(dev)
+
+            device_ids = [int(d) for d in dev["DeviceIDs"]]
 
         print("~~", dev)

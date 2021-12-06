@@ -3,8 +3,9 @@ import multiprocessing
 
 multiprocessing.freeze_support()
 import subprocess
-import rp.utils as utils
 from rp.console import fail
+
+from rp.utils import VERSION
 from rp.init import init
 from rp.run import run
 import os
