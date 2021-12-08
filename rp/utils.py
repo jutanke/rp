@@ -5,6 +5,7 @@ from os.path import join, isfile
 from typing import Dict
 from datetime import datetime
 from time import time
+import random
 
 import multiprocessing
 import subprocess
@@ -80,6 +81,27 @@ def get_paths_fname(directory: str):
     ["/path/to/file1", "/path/to/file2", ...]
     """
     return join(directory, ".rp/paths.json")
+
+
+def get_free_resources():
+    free_cpu = get_ncpu()
+    free_mem, _ = get_memory()
+    for proc in get_currently_running_docker_procs():
+        free_cpu -= proc.cpu
+        free_mem -= proc.mem
+
+    free_gpus = get_free_gpu_device_ids()
+
+    return free_cpu, free_mem, free_gpus
+
+
+def get_unique_id(settings):
+    """
+    unique id for this run
+    """
+    rand = random.uniform(0.1, 2.5)
+    txt = f"{settings['tag']}_{time()}_{rand}"
+    return txt
 
 
 def get_dockerdir(directory: str) -> str:
@@ -279,3 +301,12 @@ def get_gpus():
         gpus[device_id]["in_use"] = True
 
     return gpus
+
+
+def get_free_gpu_device_ids():
+    gpus = get_gpus()
+    free_device_ids = []
+    for device_id in gpus.keys():
+        if not gpus[device_id]["in_use"]:
+            free_device_ids.append(device_id)
+    return free_device_ids
