@@ -1,5 +1,6 @@
 from rp.console import write, fail, info, warning, success
 import rp.utils as utils
+import rp.network as network
 from sys import exit
 
 
@@ -20,4 +21,6 @@ def run(directory: str, cpu: int, gpu: int, mem: int):
     print("cpu", cpu, gpu, mem)
     print("settings", settings)
 
-    utils.get_gpus()
+    gpus = utils.get_gpus()
+
+    print("gpus", gpus)

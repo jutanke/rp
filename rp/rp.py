@@ -8,6 +8,7 @@ from rp.console import fail
 from rp.utils import VERSION
 from rp.init import init
 from rp.run import run
+from rp.info import info
 import os
 
 
@@ -24,8 +25,8 @@ def rp(tool, script, cpu, gpu, mem):
         init(path, cpu=cpu, gpu=gpu, mem=mem)
     elif tool == "run":
         run(path, cpu=cpu, gpu=gpu, mem=mem)
-    elif tool == "schedule":
-        pass
+    elif tool == "info":
+        info(path)
     else:
         fail(f"tool <{tool}> not found")
 
