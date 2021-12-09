@@ -7,6 +7,7 @@ from rp.console import fail
 
 from rp.utils import VERSION
 from rp.init import init
+from rp.kill import kill
 from rp.run import run
 from rp.info import info
 import os
@@ -18,8 +19,9 @@ import os
 @click.option("--cpu", default=-1)
 @click.option("--gpu", default=-1)
 @click.option("--mem", default=-1)
+@click.option("--pid", default=-1)
 @click.option("--outfile_name", default="")
-def rp(tool, script, cpu, gpu, mem, outfile_name):
+def rp(tool, script, cpu, gpu, mem, pid, outfile_name):
     path = os.getcwd()
 
     if tool == "init":
@@ -36,6 +38,8 @@ def rp(tool, script, cpu, gpu, mem, outfile_name):
         )
     elif tool == "info":
         info(path)
+    elif tool == "kill":
+        kill(pid)
     else:
         fail(f"tool <{tool}> not found")
 
