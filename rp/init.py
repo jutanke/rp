@@ -2,6 +2,7 @@ from rp.console import write, fail, info, warning, success
 import rp.utils as utils
 import os
 from os.path import join, isfile, isdir
+from os import makedirs
 import json
 from sys import exit
 
@@ -23,6 +24,14 @@ def init(directory: str, cpu: int, gpu: int, mem: int):
 
     project_name = directory.split("/")[-1].lower()
     info(f"initialize at {directory}")
+
+    # create folders
+    cache_dir = join(directory, ".cache")
+    output_dir = join(directory, "output")
+    if not isdir(cache_dir):
+        makedirs(cache_dir)
+    if not isdir(output_dir):
+        makedirs(output_dir)
 
     username = utils.get_username()
     info(f"project name: {project_name}")

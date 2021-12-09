@@ -1,7 +1,8 @@
 import rp.utils as utils
 import rp.console as console
+import rp.network as network
 from os.path import join, isdir
-from time import time
+from time import time, sleep
 
 
 def info(directory: str):
@@ -37,14 +38,33 @@ def info(directory: str):
     else:
         console.warning("No valid rp project at this location")
 
-    console.info("\n - - active processes - - ")
+    console.info("\n - - queued processes - - ")
+
+    is_server = network.make_me_server()  # just in case
+    if is_server:
+        sleep(0.5)
+
+    do_we_know_queue = False
+    while not do_we_know_queue:
+        do_we_know_queue, queue = network.whoisqueued()
 
     NOW = time()
+
+    if len(queue) > 0:
+        for proc in sorted(queue.values(), key=lambda x: x["start_time"]):
+            elapsed_in_min = (NOW - proc["start_time"]) / 60
+            console.write(f"{proc['name']} @{proc['docker_image']}")
+            console.write(proc["script"])
+            console.write(f"waiting for %02.2fmin" % elapsed_in_min)
+            console.write("- - - - - - - - - - - - -")
+
+    console.info("\n - - active processes - - ")
+
     used_cpus = 0
     mem_used = 1  # make sure that at least 1gb remains free!!
     for proc in utils.get_currently_running_docker_procs():
         console.write(f"{proc.docker_name} @{proc.image_name}")
-        console.write(f"\tcpu = {proc.cpu}\n\tmem = {proc.mem}g\n\tshm={proc.shm_size}")
+        console.write(f"\tcpu = {proc.cpu}\n\tmem = {proc.mem}g")
         console.write(f"\tgpus = {proc.gpu_devices}")
 
         used_cpus += proc.cpu
@@ -62,9 +82,8 @@ def info(directory: str):
     total_cpus = utils.get_ncpu()
     console.write(f"cpu: {used_cpus}/{total_cpus}")
     total_mem, _ = utils.get_memory()
-    console.write(f"total memory: {total_mem}g")
     available_mem = total_mem - mem_used
-    console.write(f"available memory: {available_mem}g")
+    console.write(f"memory: {available_mem}g/{total_mem}g")
     console.write("gpus:")
     gpus = utils.get_gpus()
     for device_id in sorted(gpus.keys()):

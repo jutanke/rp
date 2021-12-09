@@ -18,13 +18,22 @@ import os
 @click.option("--cpu", default=-1)
 @click.option("--gpu", default=-1)
 @click.option("--mem", default=-1)
-def rp(tool, script, cpu, gpu, mem):
+@click.option("--outfile_name", default="")
+def rp(tool, script, cpu, gpu, mem, outfile_name):
     path = os.getcwd()
 
     if tool == "init":
         init(path, cpu=cpu, gpu=gpu, mem=mem)
     elif tool == "run":
-        run(path, cpu=cpu, gpu=gpu, mem=mem)
+        run(
+            path,
+            cpu=cpu,
+            gpu=gpu,
+            mem=mem,
+            outfile_name=outfile_name,
+            script=script,
+            final_docker_exec_command="/bin/bash /home/user/run.sh",
+        )
     elif tool == "info":
         info(path)
     else:

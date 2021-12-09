@@ -13,6 +13,9 @@ import subprocess
 import psutil
 from collections import namedtuple
 from typing import List
+from shutil import copyfile, move
+import rp.console as console
+
 
 RunningProcess = namedtuple(
     "RunningProcess",
@@ -81,6 +84,81 @@ def get_paths_fname(directory: str):
     ["/path/to/file1", "/path/to/file2", ...]
     """
     return join(directory, ".rp/paths.json")
+
+
+CACHE = {}
+
+
+def handle_broken_project(directory):
+    if is_broken_project(directory):
+        console.warning(
+            "\nThis repo seems to be broken (interrupt during docker build)"
+        )
+        fname_bkp = join(directory, "docker/Dockerfile.bkp")
+        fname_broken = join(directory, "docker/Dockerfile")
+        move(fname_bkp, fname_broken)
+        console.success("\tprobably fixed!\n")
+
+
+def is_broken_project(directory: str) -> bool:
+    """"""
+    return isfile(join(directory, "docker/Dockerfile.bkp"))
+
+
+def get_running_container_names_cached(cached_s=0.5):
+    global CACHE
+    key = "get_running_container_names"
+    now = time()
+    recalc = True
+    if key in CACHE:
+        last_time = CACHE[key]["last_time"]
+        elapsed_in_s = now - last_time
+        if elapsed_in_s < cached_s:
+            recalc = False
+    if recalc:
+        names = get_running_container_names()
+        CACHE[key] = {"last_time": now, "names": names}
+    else:
+        names = CACHE[key]["names"]
+    return names
+
+
+def get_stdout_file_in_container(directory: str, outfile_name: str = "") -> str:
+    settings = get_replik_settings(directory)
+    project_name = settings["name"]
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d_%H%M%S")
+    if len(outfile_name) == 0:
+        return f"/home/user/{project_name}/.rp/logs/stdout_{dt_string}.log"
+    else:
+        return f"/home/user/{project_name}/.rp/logs/{outfile_name}_{dt_string}.log"
+
+
+def get_free_resources_cached(cached_s=2.0):
+    """get resources is expensive! Query only once in a short time!"""
+    global CACHE
+    key = "get_free_resources"
+    now = time()
+    recalc = True
+    if key in CACHE:
+        last_time = CACHE[key]["last_time"]
+        elapsed_in_s = now - last_time
+        if elapsed_in_s < cached_s:
+            recalc = False
+    if recalc:
+        free_cpu, free_mem, free_gpus = get_free_resources()
+        CACHE[key] = {
+            "last_time": now,
+            "free_cpu": free_cpu,
+            "free_mem": free_mem,
+            "free_gpus": free_gpus,
+        }
+    else:
+        free_cpu = CACHE[key]["free_cpu"]
+        free_mem = CACHE[key]["free_mem"]
+        free_gpus = CACHE[key]["free_gpus"]
+
+    return free_cpu, free_mem, free_gpus
 
 
 def get_free_resources():
@@ -166,6 +244,14 @@ def get_running_container_names():
     ]
 
 
+def datetime_from_utc_to_local(utc_datetime):
+    now_timestamp = time()
+    offset = datetime.fromtimestamp(now_timestamp) - datetime.utcfromtimestamp(
+        now_timestamp
+    )
+    return utc_datetime + offset
+
+
 def get_currently_running_docker_procs() -> List[RunningProcess]:
     running_processes = []
     for container_name in get_running_container_names():
@@ -203,7 +289,8 @@ def get_currently_running_docker_procs() -> List[RunningProcess]:
             "."
         )  # the nanosec confuse the converter and they don't matter anyways
         start_time = start_time[:end_pt]
-        start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S").timestamp()
+        start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_time = datetime_from_utc_to_local(start_time).timestamp()
 
         container = json.loads(dev)
 

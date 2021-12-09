@@ -2,6 +2,7 @@ import zmq
 import time
 from threading import Thread
 import rp.utils as utils
+from random import randint
 
 
 PORT = 1234
@@ -19,15 +20,41 @@ def server_function(socket):
         # print("Received request: ", message)
         if message["msg"] == "alive?":
             socket.send_json({"msg": "yes"})
+        elif message["msg"] == "nameme":
+            container_names = set(utils.get_running_container_names_cached())
+            for proc in CURRENT_QUEUE.values():
+                container_names.add(proc["name"])
+
+            # 10 tries should be enough!
+            for _ in range(10):
+                name = "rp%04d" % randint(0, 9999)
+                if name not in container_names:
+                    break
+
+            socket.send_json({"msg": "you_have_been_named", "name": name})
+
+        elif message["msg"] == "whoisqueued":
+            socket.send_json({"msg": "queue", "queue": CURRENT_QUEUE})
         elif message["msg"] == "may_I?":
             NOW = time.time()
-            server_alive_in_s = time.time() - START_TIME
+            server_alive_in_s = NOW - START_TIME
             gpus = message["gpus"]
             cpu = message["cpu"]
             mem = message["mem"]
+            script = message["script"]
+            name = message["name"]
+            docker_image = message["docker_image"]
             unique_id = message["unique_id"]
             start_time = message["start_time"]
             if unique_id in CURRENT_QUEUE:
+                # to not overload the server we flat-out reject anyone
+                # that has run a request and was denied within the last
+                # 5s
+                elapsed_since_last_req = NOW - CURRENT_QUEUE[unique_id]["last_touch"]
+                if elapsed_since_last_req < 5:
+                    socket.send_json({"msg": "youmaynot"})
+                    continue
+
                 CURRENT_QUEUE[unique_id]["last_touch"] = NOW
             else:
                 CURRENT_QUEUE[unique_id] = {
@@ -36,29 +63,37 @@ def server_function(socket):
                     "cpu": cpu,
                     "gpus": gpus,
                     "mem": mem,
+                    "name": name,
+                    "script": script,
+                    "docker_image": docker_image,
                 }
 
-            if server_alive_in_s < 10:
+            if server_alive_in_s < 5:
                 # if the server is alive for less than
-                # 10s we reject any request to make sure
+                # 5s we reject any request to make sure
                 # that we get all waiting threads
                 socket.send_json({"msg": "youmaynot"})
             else:
                 # step 0: clean-up staging
+                del_key_from_staging = []
                 for key in STAGING:
                     placed_to_staging_in_s = NOW - STAGING[key]["placed_time"]
                     if placed_to_staging_in_s > 10:
-                        del STAGING[key]
+                        del_key_from_staging.append(key)
+                for key in del_key_from_staging:
+                    del STAGING[key]
 
                 # step 1: delete all entries that were not touched recently
+                del_key_from_current_queue = []
                 for key in CURRENT_QUEUE:
                     last_touched_in_s = NOW - CURRENT_QUEUE[key]["last_touch"]
                     if last_touched_in_s > 10:
-                        del CURRENT_QUEUE[key]
+                        del_key_from_current_queue.append(key)
+                for key in del_key_from_current_queue:
+                    del CURRENT_QUEUE[key]
 
                 # step 2: get free resources
-                free_cpu, free_mem, free_gpus = utils.get_free_resources()
-
+                free_cpu, free_mem, free_gpus = utils.get_free_resources_cached()
                 free_gpus = set(free_gpus)
 
                 # step 3: add resource of staged processes
@@ -102,17 +137,28 @@ def server_function(socket):
                         "mem": mem,
                     }
 
+                    del CURRENT_QUEUE[unique_id]
+
                     socket.send_json({"msg": "youmay", "gpus": selected_gpus})
                 else:
                     socket.send_json({"msg": "youmaynot"})
 
 
-def may_I_be_scheduled(start_time, gpus, mem, cpu, unique_id: str):
+def may_I_be_scheduled(
+    start_time,
+    gpus,
+    mem,
+    cpu,
+    unique_id: str,
+    name: str,
+    docker_image: str,
+    script: str,
+):
     """"""
     global PORT
     result = False
+    gpu_devices = []
     try:
-        print("may i?", start_time, gpus, mem, cpu)
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 0)
@@ -125,21 +171,79 @@ def may_I_be_scheduled(start_time, gpus, mem, cpu, unique_id: str):
                 "cpu": cpu,
                 "unique_id": unique_id,
                 "start_time": start_time,
+                "docker_image": docker_image,
+                "name": name,
+                "script": script,
             }
         )
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
         if poller.poll(4000):  # 4s timeout in milliseconds
             message = socket.recv_json()
-
             result = message["msg"] == "youmay"
+            if result:
+                gpu_devices = message["gpus"]
         else:
             result = False
     except:
         result = False
 
-    print(" -->", result)
-    return result
+    return result, gpu_devices
+
+
+def give_me_a_name():
+    global PORT
+    name = None
+    try:
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 0)
+        socket.connect("tcp://localhost:%s" % PORT)
+        socket.send_json({"msg": "nameme"})
+        poller = zmq.Poller()
+        poller.register(socket, zmq.POLLIN)
+        if poller.poll(1000):  # 1s timeout in milliseconds
+            message = socket.recv_json()
+
+        if message["msg"] == "you_have_been_named":
+            name = message["name"]
+
+        socket.close()
+        context.term()
+    except:
+        pass
+    return name
+
+
+def whoisqueued():
+    global PORT
+    result = False
+    queue = {}
+    try:
+        # !possible edge-case!
+        # if a new server is spawn it might be that not
+        # all queued processes have made contact yet!
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 0)
+        socket.connect("tcp://localhost:%s" % PORT)
+        socket.send_json({"msg": "whoisqueued"})
+        poller = zmq.Poller()
+        poller.register(socket, zmq.POLLIN)
+        if poller.poll(1000):  # 1s timeout in milliseconds
+            message = socket.recv_json()
+        else:
+            result = False
+        if message["msg"] == "queue":
+            result = True
+            queue = message["queue"]
+        else:
+            result = False
+        socket.close()
+        context.term()
+    except:
+        result = False
+    return result, queue
 
 
 def is_server_alive():
@@ -177,5 +281,6 @@ def make_me_server():
     except:
         return False
     thread = Thread(target=server_function, args=(socket,))
+    thread.daemon = True  # kill when main-thread dies
     thread.start()
     return True
