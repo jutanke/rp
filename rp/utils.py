@@ -360,13 +360,16 @@ def get_gpus():
             stdout=subprocess.PIPE,
         ).stdout.decode("utf-8")
 
-        if dev == "null":
+        if dev == "null" or dev == "'null'" or dev is None:
             pass  # no GPU for this container!
         else:
             dev = str(dev)[1:-2]
             dev = json.loads(dev)
-
-            if dev[0]["DeviceIDs"] is not None:
+            if (
+                dev is not None
+                and dev[0] is not None
+                and dev[0]["DeviceIDs"] is not None
+            ):
                 device_ids = [int(d) for d in dev[0]["DeviceIDs"]]
                 for device_id in device_ids:
                     gpus[device_id]["in_use"] = True
