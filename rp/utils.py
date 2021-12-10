@@ -297,7 +297,10 @@ def get_currently_running_docker_procs() -> List[RunningProcess]:
         shm_size = container["ShmSize"] / (1024 ** 3)
         mem = container["Memory"] / (1024 ** 3)
 
-        gpu_device_ids = container["DeviceRequests"][0]["DeviceIDs"]
+        if container["DeviceRequests"] is None:
+            gpu_device_ids = None
+        else:
+            gpu_device_ids = container["DeviceRequests"][0]["DeviceIDs"]
 
         device_ids = []
         if gpu_device_ids is not None:
@@ -379,7 +382,7 @@ def get_gpus():
     )
     procs = [p for p in procs if len(p) > 0 and not p.startswith("pid")]
     for query in procs:
-        query = procs[i].split(", ")
+        query = query.split(", ")
         assert len(query) == 2
         pid = query[0]
         gpu_uuid = query[1]

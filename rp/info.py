@@ -27,13 +27,13 @@ def info(directory: str):
         for path in paths:
             if "/" not in path:
                 path = join(directory, path)
-                last_entry = path.split("/")[-1]
-                if isdir(path):
-                    console.success(f"{path} -> /home/user/{last_entry} [path exists]")
-                else:
-                    console.fail(
-                        f"{path} -> /home/user/{last_entry} [path does not exists]"
-                    )
+            last_entry = path.split("/")[-1]
+            if isdir(path):
+                console.success(f"{path} -> /home/user/{last_entry} [path exists]")
+            else:
+                console.fail(
+                    f"{path} -> /home/user/{last_entry} [path does not exists]"
+                )
 
     else:
         console.warning("No valid rp project at this location")

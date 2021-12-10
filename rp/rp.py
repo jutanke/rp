@@ -36,6 +36,16 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name):
             script=script,
             final_docker_exec_command="/bin/bash /home/user/run.sh",
         )
+    elif tool == "enter":
+        run(
+            path,
+            cpu=cpu,
+            gpu=gpu,
+            mem=mem,
+            outfile_name=outfile_name,
+            script=script,
+            final_docker_exec_command="/bin/bash",
+        )
     elif tool == "info":
         info(path)
     elif tool == "kill":
