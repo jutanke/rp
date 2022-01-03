@@ -16,6 +16,8 @@ from typing import List
 from shutil import copyfile, move
 import rp.console as console
 
+from sys import exit
+
 
 RunningProcess = namedtuple(
     "RunningProcess",
@@ -30,7 +32,7 @@ RunningProcess = namedtuple(
     ],
 )
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 FORBIDDEN_CHARACTERS = [
     " ",
     "%",
@@ -183,6 +185,12 @@ def get_unique_id(settings):
 
 def get_dockerdir(directory: str) -> str:
     return join(directory, "docker")
+
+
+def get_tempdockerdir(directory: str) -> str:
+    unique_name = f"{time()}"
+    path = join(directory, f".cache/rp/docker/{unique_name}")
+    return path
 
 
 def replik_root_file(directory: str) -> str:

@@ -2,7 +2,7 @@ import os
 from os.path import join
 import rp.utils as utils
 import rp.console as console
-from shutil import copyfile, move
+from shutil import copyfile, copytree, move
 from sys import exit
 from subprocess import call
 import subprocess
@@ -11,6 +11,13 @@ import subprocess
 def build(directory: str, outfile_name: str, script: str):
     utils.handle_broken_project(directory)
     dockerdir = utils.get_dockerdir(directory)
+
+    tmp_dockerdir = utils.get_tempdockerdir(directory)
+
+    copytree(dockerdir, tmp_dockerdir)
+
+    dockerdir = tmp_dockerdir
+
     dockerfile = join(dockerdir, "Dockerfile")
     dockerfile_bkp = join(dockerdir, "Dockerfile.bkp")
     hook_pre_useradd = join(dockerdir, "hook_pre_useradd")
