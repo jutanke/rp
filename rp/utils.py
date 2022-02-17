@@ -135,7 +135,7 @@ def get_stdout_file_in_container(directory: str, outfile_name: str = "") -> str:
         return f"/home/user/{project_name}/.rp/logs/{outfile_name}_{dt_string}.log"
 
 
-def get_free_resources_cached(cached_s=2.0):
+def get_free_resources_cached(cached_s=2.0, debug=False):
     """get resources is expensive! Query only once in a short time!"""
     global CACHE
     key = "get_free_resources"
@@ -147,7 +147,9 @@ def get_free_resources_cached(cached_s=2.0):
         if elapsed_in_s < cached_s:
             recalc = False
     if recalc:
-        free_cpu, free_mem, free_gpus = get_free_resources()
+        if debug:
+            print("[debug|get_free_resources_cached] recalc!")
+        free_cpu, free_mem, free_gpus = get_free_resources(debug)
         CACHE[key] = {
             "last_time": now,
             "free_cpu": free_cpu,
@@ -155,6 +157,8 @@ def get_free_resources_cached(cached_s=2.0):
             "free_gpus": free_gpus,
         }
     else:
+        if debug:
+            print("[debug|get_free_resources_cached] cached!")
         free_cpu = CACHE[key]["free_cpu"]
         free_mem = CACHE[key]["free_mem"]
         free_gpus = CACHE[key]["free_gpus"]
@@ -162,10 +166,10 @@ def get_free_resources_cached(cached_s=2.0):
     return free_cpu, free_mem, free_gpus
 
 
-def get_free_resources():
+def get_free_resources(debug: bool):
     free_cpu = get_ncpu()
     free_mem, _ = get_memory()
-    for proc in get_currently_running_docker_procs():
+    for proc in get_currently_running_docker_procs(debug=debug):
         free_cpu -= proc.cpu
         free_mem -= proc.mem
 
@@ -235,7 +239,7 @@ def get_paths_for_mapping(directory):
 
 def get_running_container_names():
     """
-    get the names of all currently running containers
+    get the names of all currently running rp containers
     """
     return [
         f.replace('"', "")
@@ -247,7 +251,7 @@ def get_running_container_names():
             .lower()
             .split("\n")
         )
-        if len(f) > 0
+        if len(f) > 0 and f.replace('"', "").startswith("rp")
     ]
 
 
@@ -259,73 +263,89 @@ def datetime_from_utc_to_local(utc_datetime):
     return utc_datetime + offset
 
 
-def get_currently_running_docker_procs() -> List[RunningProcess]:
+def get_currently_running_docker_procs(debug: bool) -> List[RunningProcess]:
     running_processes = []
     for container_name in get_running_container_names():
-        dev = subprocess.run(
-            [
-                "docker",
-                "inspect",
-                "--format='{{json .HostConfig}}'",
-                container_name,
-            ],
-            stdout=subprocess.PIPE,
-        ).stdout.decode("utf-8")[1:-2]
-
-        image_name = subprocess.run(
-            [
-                "docker",
-                "inspect",
-                "--format='{{json .Config.Image}}'",
-                container_name,
-            ],
-            stdout=subprocess.PIPE,
-        ).stdout.decode("utf-8")[2:-3]
-
-        start_time = subprocess.run(
-            [
-                "docker",
-                "inspect",
-                "--format='{{json .State.StartedAt}}'",
-                container_name,
-            ],
-            stdout=subprocess.PIPE,
-        ).stdout.decode("utf-8")[1:-2]
-        start_time = start_time.replace('"', "").replace("T", " ")
-        end_pt = start_time.find(
-            "."
-        )  # the nanosec confuse the converter and they don't matter anyways
-        start_time = start_time[:end_pt]
-        start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        start_time = datetime_from_utc_to_local(start_time).timestamp()
-
-        container = json.loads(dev)
-
-        cpu = container["NanoCpus"] / 1000000000
-        shm_size = container["ShmSize"] / (1024 ** 3)
-        mem = container["Memory"] / (1024 ** 3)
-
-        if container["DeviceRequests"] is None:
-            gpu_device_ids = None
-        else:
-            gpu_device_ids = container["DeviceRequests"][0]["DeviceIDs"]
-
-        device_ids = []
-        if gpu_device_ids is not None:
-            for did in gpu_device_ids:
-                device_ids.append(int(did))
-
-        running_processes.append(
-            RunningProcess(
-                cpu=cpu,
-                mem=mem,
-                shm_size=shm_size,
-                gpu_devices=device_ids,
-                docker_name=container_name,
-                image_name=image_name,
-                start_time=start_time,
+        if debug:
+            print(
+                f"[debug|get_currently_running_docker_procs] try to check container {container_name}"
             )
-        )
+            _start = time()
+        try:
+            dev = subprocess.run(
+                [
+                    "docker",
+                    "inspect",
+                    "--format='{{json .HostConfig}}'",
+                    container_name,
+                ],
+                stdout=subprocess.PIPE,
+            ).stdout.decode("utf-8")[1:-2]
+
+            image_name = subprocess.run(
+                [
+                    "docker",
+                    "inspect",
+                    "--format='{{json .Config.Image}}'",
+                    container_name,
+                ],
+                stdout=subprocess.PIPE,
+            ).stdout.decode("utf-8")[2:-3]
+
+            start_time = subprocess.run(
+                [
+                    "docker",
+                    "inspect",
+                    "--format='{{json .State.StartedAt}}'",
+                    container_name,
+                ],
+                stdout=subprocess.PIPE,
+            ).stdout.decode("utf-8")[1:-2]
+            start_time = start_time.replace('"', "").replace("T", " ")
+            end_pt = start_time.find(
+                "."
+            )  # the nanosec confuse the converter and they don't matter anyways
+            start_time = start_time[:end_pt]
+            start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            start_time = datetime_from_utc_to_local(start_time).timestamp()
+
+            container = json.loads(dev)
+
+            cpu = container["NanoCpus"] / 1000000000
+            shm_size = container["ShmSize"] / (1024 ** 3)
+            mem = container["Memory"] / (1024 ** 3)
+
+            if container["DeviceRequests"] is None:
+                gpu_device_ids = None
+            else:
+                gpu_device_ids = container["DeviceRequests"][0]["DeviceIDs"]
+
+            device_ids = []
+            if gpu_device_ids is not None:
+                for did in gpu_device_ids:
+                    device_ids.append(int(did))
+
+            running_processes.append(
+                RunningProcess(
+                    cpu=cpu,
+                    mem=mem,
+                    shm_size=shm_size,
+                    gpu_devices=device_ids,
+                    docker_name=container_name,
+                    image_name=image_name,
+                    start_time=start_time,
+                )
+            )
+            if debug:
+                print(
+                    f"[debug|get_currently_running_docker_procs] add running proc {container_name}"
+                )
+                print(f"\tcpu:{cpu} mem:{mem}, gpus:{device_ids}")
+                print("\telapsed", time() - _start)
+        except:
+            print(
+                f"[debug|get_currently_running_docker_procs] failed to load {container_name}"
+            )
     return list(sorted(running_processes, key=lambda p: p.start_time))
 
 

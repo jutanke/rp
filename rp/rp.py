@@ -21,7 +21,8 @@ import os
 @click.option("--mem", default=-1)
 @click.option("--pid", default=-1)
 @click.option("--outfile_name", default="")
-def rp(tool, script, cpu, gpu, mem, pid, outfile_name):
+@click.option("--debug", is_flag=True)
+def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug):
     path = os.getcwd()
 
     if tool == "init":
@@ -35,6 +36,7 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name):
             outfile_name=outfile_name,
             script=script,
             final_docker_exec_command="/bin/bash /home/user/run.sh",
+            debug=debug,
         )
     elif tool == "enter":
         run(
@@ -45,9 +47,10 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name):
             outfile_name=outfile_name,
             script=script,
             final_docker_exec_command="/bin/bash",
+            debug=debug,
         )
     elif tool == "info":
-        info(path)
+        info(path, debug=debug)
     elif tool == "kill":
         kill(pid)
     else:

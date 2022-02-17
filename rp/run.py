@@ -19,6 +19,7 @@ def run(
     outfile_name: str,
     script: str,
     final_docker_exec_command: str,
+    debug: bool,
 ):
     if not utils.is_replik_project(directory):
         fail(f"{directory} is not valid rp directory.. exiting")
@@ -46,7 +47,7 @@ def run(
     if gpu == -1:
         gpu = settings["gpus"]
 
-    is_server = network.make_me_server()
+    is_server = network.make_me_server(debug=debug)
     if is_server:
         info("I'm authority!")
     time.sleep(0.1)
@@ -74,15 +75,17 @@ def run(
             docker_image=tag,
             script=script,
         )
+        if may_I_be_scheduled:
+            break
 
-        random_wait_in_s = random.uniform(0.1, 1.0)
+        random_wait_in_s = random.uniform(5.0, 30.0)
         time.sleep(random_wait_in_s)
 
         if not is_server:
             # the tcp port operates as lock
             # if we cannot become server there is another
             # authority and we obey to them!
-            is_server = network.make_me_server()
+            is_server = network.make_me_server(debug=debug)
             if is_server:
                 info("I'm authority!")
 

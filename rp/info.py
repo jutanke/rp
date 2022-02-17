@@ -5,8 +5,10 @@ from os.path import join, isdir
 from time import time, sleep
 
 
-def info(directory: str):
+def info(directory: str, debug: bool):
     print("\n")
+    if debug:
+        print("[debug] rp info")
     if utils.is_replik_project(directory):
         console.success("valid rp project <{directory}>\n")
         console.info("- - project information - - ")
@@ -39,14 +41,21 @@ def info(directory: str):
         console.warning("No valid rp project at this location")
 
     console.info("\n - - queued processes - - ")
-
-    is_server = network.make_me_server()  # just in case
+    if debug:
+        print("[debug|info] try to make me server...")
+    is_server = network.make_me_server(debug=debug)  # just in case
+    if debug:
+        print(f"[debug|info] are we server: {is_server}")
     if is_server:
         sleep(0.5)
 
+    if debug:
+        print("[debug|info] ask who is queued...")
     do_we_know_queue = False
     while not do_we_know_queue:
         do_we_know_queue, queue = network.whoisqueued()
+        if debug:
+            print(f"[debug|info] we got a response.. do we know? {do_we_know_queue}")
 
     NOW = time()
 
@@ -62,7 +71,7 @@ def info(directory: str):
 
     used_cpus = 0
     mem_used = 1  # make sure that at least 1gb remains free!!
-    for proc in utils.get_currently_running_docker_procs():
+    for proc in utils.get_currently_running_docker_procs(debug):
         console.write(f"{proc.docker_name} @{proc.image_name}")
         console.write(f"\tcpu = {proc.cpu}\n\tmem = {proc.mem}g")
         console.write(f"\tgpus = {proc.gpu_devices}")

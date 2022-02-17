@@ -8,7 +8,7 @@ from random import randint
 PORT = 1234
 
 
-def server_function(socket):
+def server_function(socket, debug: bool):
     START_TIME = time.time()
 
     CURRENT_QUEUE = {}
@@ -17,7 +17,10 @@ def server_function(socket):
     while True:
         #  Wait for next request from client
         message = socket.recv_json()
-        # print("Received request: ", message)
+
+        if debug:
+            print("[debug|server] reveive message:", message["msg"])
+
         if message["msg"] == "alive?":
             socket.send_json({"msg": "yes"})
         elif message["msg"] == "nameme":
@@ -34,7 +37,11 @@ def server_function(socket):
             socket.send_json({"msg": "you_have_been_named", "name": name})
 
         elif message["msg"] == "whoisqueued":
+            if debug:
+                print("[debug|server] send current queue #", len(CURRENT_QUEUE))
             socket.send_json({"msg": "queue", "queue": CURRENT_QUEUE})
+            if debug:
+                print("[debug|server] current queue has been sent!")
         elif message["msg"] == "may_I?":
             NOW = time.time()
             server_alive_in_s = NOW - START_TIME
@@ -75,6 +82,9 @@ def server_function(socket):
                 socket.send_json({"msg": "youmaynot"})
             else:
                 # step 0: clean-up staging
+                if debug:
+                    print("[debug|server] step 0: clean-up staging")
+                    _start = time.time()
                 del_key_from_staging = []
                 for key in STAGING:
                     placed_to_staging_in_s = NOW - STAGING[key]["placed_time"]
@@ -84,6 +94,12 @@ def server_function(socket):
                     del STAGING[key]
 
                 # step 1: delete all entries that were not touched recently
+                if debug:
+                    print("\telapsed", time.time() - _start)
+                    print(
+                        "[debug|server] step 1: delete all entries that were not touched!"
+                    )
+                    _start = time.time()
                 del_key_from_current_queue = []
                 for key in CURRENT_QUEUE:
                     last_touched_in_s = NOW - CURRENT_QUEUE[key]["last_touch"]
@@ -93,10 +109,20 @@ def server_function(socket):
                     del CURRENT_QUEUE[key]
 
                 # step 2: get free resources
-                free_cpu, free_mem, free_gpus = utils.get_free_resources_cached()
+                if debug:
+                    print("\telapsed", time.time() - _start)
+                    print("[debug|server] step 2: get free resources")
+                    _start = time.time()
+                free_cpu, free_mem, free_gpus = utils.get_free_resources_cached(
+                    debug=debug
+                )
                 free_gpus = set(free_gpus)
 
                 # step 3: add resource of staged processes
+                if debug:
+                    print("\telapsed", time.time() - _start)
+                    print("[debug|server] step 3: add resources of staged procs")
+                    _start = time.time()
                 for proc in STAGING.values():
                     free_cpu -= proc["cpu"]
                     free_mem -= proc["mem"]
@@ -107,6 +133,10 @@ def server_function(socket):
                 free_gpus = list(free_gpus)
 
                 # step 4: sort all surviving entries by age
+                if debug:
+                    print("\telapsed", time.time() - _start)
+                    print("[debug|server] step 4: sort all surviving entries")
+                    _start = time.time()
                 you_may = False
                 for _unique_id, resources in sorted(
                     CURRENT_QUEUE.items(), key=lambda e: e[1]["start_time"]
@@ -114,6 +144,20 @@ def server_function(socket):
                     _cpu = resources["cpu"]
                     _mem = resources["mem"]
                     _gpus = resources["gpus"]
+
+                    if debug:
+                        print(
+                            f"\t[debug|server] cpu fit? {free_cpu} vs {_cpu}",
+                            free_cpu - _cpu,
+                        )
+                        print(
+                            f"\t[debug|server] mem fit? {free_mem} vs {_mem}",
+                            free_mem - _mem,
+                        )
+                        print(
+                            f"\t[debug|server] gpu fit? {len(free_gpus)} vs {_gpus}",
+                            len(free_gpus) - _gpus,
+                        )
 
                     # do the resources fit?
                     if (
@@ -142,6 +186,8 @@ def server_function(socket):
                     socket.send_json({"msg": "youmay", "gpus": selected_gpus})
                 else:
                     socket.send_json({"msg": "youmaynot"})
+                if debug:
+                    print("\telapsed", time.time() - _start)
 
 
 def may_I_be_scheduled(
@@ -230,7 +276,7 @@ def whoisqueued():
         socket.send_json({"msg": "whoisqueued"})
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
-        if poller.poll(1000):  # 1s timeout in milliseconds
+        if poller.poll(60000):  # 60s timeout in milliseconds
             message = socket.recv_json()
         else:
             result = False
@@ -272,7 +318,7 @@ def is_server_alive():
     return result
 
 
-def make_me_server():
+def make_me_server(debug: bool):
     global PORT
     try:
         context = zmq.Context()
@@ -280,7 +326,13 @@ def make_me_server():
         socket.bind("tcp://*:%s" % PORT)
     except:
         return False
-    thread = Thread(target=server_function, args=(socket,))
+    thread = Thread(
+        target=server_function,
+        args=(
+            socket,
+            debug,
+        ),
+    )
     thread.daemon = True  # kill when main-thread dies
     thread.start()
     return True
