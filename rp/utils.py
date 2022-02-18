@@ -391,16 +391,24 @@ def get_gpus():
         if dev == "null" or dev == "'null'" or dev is None:
             pass  # no GPU for this container!
         else:
-            dev = str(dev)[1:-2]
-            dev = json.loads(dev)
-            if (
-                dev is not None
-                and dev[0] is not None
-                and dev[0]["DeviceIDs"] is not None
-            ):
-                device_ids = [int(d) for d in dev[0]["DeviceIDs"]]
-                for device_id in device_ids:
-                    gpus[device_id]["in_use"] = True
+            try:
+                dev = str(dev)[1:-2]
+                dev = json.loads(dev)
+                if (
+                    dev is not None
+                    and dev[0] is not None
+                    and dev[0]["DeviceIDs"] is not None
+                ):
+                    device_ids = [int(d) for d in dev[0]["DeviceIDs"]]
+                    for device_id in device_ids:
+                        gpus[device_id]["in_use"] = True
+            except json.decoder.JSONDecodeError:
+                print("-------------------------------")
+                console.fail("[get_gpus] crashed json decoder:")
+                print(f"container: {container_name}")
+                print("failed string:")
+                print(dev)
+                print("-------------------------------")
 
     # check for 'rogue' processes on GPUs
     procs = (
