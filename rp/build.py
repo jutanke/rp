@@ -69,12 +69,14 @@ def build(directory: str, outfile_name: str, script: str):
             pipe = f" &>{outfile_name}"
 
         D.write(
-            'RUN echo "source ~/.bashrc\\n'
+            'RUN echo "'
+            + f"source home/user/{project_name}/docker/bashhook.sh\\n"
             + f'cd /home/user/{project_name} && bash {script}{pipe}"'
             + " >> /home/user/run.sh"
         )
 
-        # add startup bash hook
+        # add startup bash hook:
+        # THIS IS ONLY RELEVANT WHEN ```rp enter```
         D.write("\n")
         D.write(
             f'RUN echo "/bin/bash /home/user/{project_name}/docker/bashhook.sh" >> /home/user/.bashrc'

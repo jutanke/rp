@@ -75,7 +75,10 @@ def init(directory: str, cpu: int, gpu: int, mem: int):
         f.write('RUN echo "pre-user hook"\n')
 
     with open(join(docker_dir, "bashhook.sh"), "w") as f:
-        f.write('echo "bashhook"\n')
+        f.write('if [[ -z "${BASHHOOKEXEC}" ]]; then')
+        f.write('\techo "bashhook"\n')
+        f.write("\texport BASHHOOKEXEC=1")
+        f.write("fi")
 
     with open(join(docker_dir, ".dockerignore"), "w") as f:
         f.write("*.sh\n")
