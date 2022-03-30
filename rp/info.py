@@ -89,7 +89,7 @@ def info(directory: str, debug: bool):
     console.info("\n - - global information - - ")
 
     total_cpus = utils.get_ncpu()
-    console.write(f"cpu: {used_cpus}/{total_cpus}")
+    console.write(f"cpu: {total_cpus-used_cpus}/{total_cpus}")
     total_mem, _ = utils.get_memory()
     available_mem = total_mem - mem_used
     console.write(f"memory: {available_mem}g/{total_mem}g")
