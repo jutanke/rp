@@ -10,6 +10,7 @@ from rp.init import init
 from rp.kill import kill
 from rp.run import run
 from rp.info import info
+from rp.freeze import freeze
 import os
 
 
@@ -51,6 +52,8 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug):
         )
     elif tool == "info":
         info(path, debug=debug)
+    elif tool == "freeze":
+        freeze(path, debug=debug)
     elif tool == "kill":
         kill(pid)
     else:

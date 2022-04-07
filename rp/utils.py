@@ -187,6 +187,15 @@ def get_unique_id(settings):
     return txt
 
 
+def get_frozen_image_path(directory: str) -> str:
+    """
+    Path to the frozen image
+    """
+    info = utils.get_replik_settings(directory)
+    project_name = info["name"]
+    return join(get_dockerdir(directory), f"frozen_{project_name}_image.tar")
+
+
 def get_dockerdir(directory: str) -> str:
     return join(directory, "docker")
 
