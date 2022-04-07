@@ -1,3 +1,5 @@
+copy_to_cephfs.sh
+
 .vscode/
 
 # Byte-compiled / optimized / DLL files
