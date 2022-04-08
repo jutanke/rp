@@ -10,11 +10,11 @@ from sys import exit
 def init(directory: str, cpu: int, gpu: int, mem: int):
 
     if cpu == -1:
-        cpu = 4
+        cpu = 1
     if gpu == -1:
         gpu = 0
     if mem == -1:
-        mem = 8
+        mem = 3
 
     write("\n[rp]")
 
