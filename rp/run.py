@@ -6,7 +6,7 @@ from sys import exit
 import time
 import random
 from os.path import isdir, join
-
+from sys import exit
 
 from subprocess import call
 
@@ -20,6 +20,7 @@ def run(
     script: str,
     final_docker_exec_command: str,
     debug: bool,
+    detach: bool,
 ):
     if not utils.is_replik_project(directory):
         fail(f"{directory} is not valid rp directory.. exiting")
@@ -120,8 +121,12 @@ def run(
         path_container = f"/home/user/{last_entry}"
         docker_exec_command += f"-v {path_host}:{path_container} "
 
+    detach_string = ""
+    if detach:
+        detach_string = "-d "
+
     docker_exec_command += f"--name {name} "
-    docker_exec_command += f"--rm -it {tag} " + final_docker_exec_command
+    docker_exec_command += f"--rm {detach_string}-it {tag} " + final_docker_exec_command
 
     info("scheduled!")
     call(docker_exec_command, shell=True)

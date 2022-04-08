@@ -1,5 +1,6 @@
 import click
 import multiprocessing
+from sys import exit
 
 multiprocessing.freeze_support()
 import subprocess
@@ -22,8 +23,9 @@ import os
 @click.option("--mem", default=-1)
 @click.option("--pid", default=-1)
 @click.option("--outfile_name", default="")
+@click.option("--detach", is_flag=False)
 @click.option("--debug", is_flag=True)
-def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug):
+def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug, detach):
     path = os.getcwd()
 
     if tool == "init":
@@ -38,8 +40,12 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug):
             script=script,
             final_docker_exec_command="/bin/bash /home/user/run.sh",
             debug=debug,
+            detach=detach,
         )
     elif tool == "enter":
+        if detach:
+            fail("Cannot `enter` while `--detach=True`. Exiting...")
+            exit()
         run(
             path,
             cpu=cpu,
