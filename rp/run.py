@@ -93,7 +93,7 @@ def run(
     assert gpu == len(gpu_device_ids)
 
     docker_exec_command = "docker run"
-    docker_exec_command += f' --privileged --shm-size="{docker_shm}" '
+    docker_exec_command += f' --shm-size="{docker_shm}" '
     docker_exec_command += f'--memory="{mem}g" '
     docker_exec_command += f'--cpus="{cpu}" '
 

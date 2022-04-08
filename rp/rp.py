@@ -55,6 +55,7 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug, detach):
             script=script,
             final_docker_exec_command="/bin/bash",
             debug=debug,
+            detach=False,
         )
     elif tool == "info":
         info(path, debug=debug)

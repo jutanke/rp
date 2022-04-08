@@ -4,9 +4,13 @@ import rp.network as network
 from os.path import join, isdir
 from time import time, sleep
 
+VERSION = "0.1.4"
+
 
 def info(directory: str, debug: bool):
+    global VERSION
     print("\n")
+    console.info(f"rp version: {VERSION}")
     if debug:
         print("[debug] rp info")
     if utils.is_replik_project(directory):
