@@ -64,7 +64,7 @@ docker image successfully build!
 ```
 you can savely `Ctrl+C` whenever you like.
 
-If you have a long-running task you should run ```rp run ...``` from within `tmux` or `screen` as the process will otherwise be killed when exiting the terminal! Alternatively, you can run the process in detached mode via ```rp run --detached=True ...```. Note that you will not receive any console prints while detached.
+If you have a long-running task you should run ```rp run ...``` from within `tmux` or `screen` as the process will otherwise be killed when exiting the terminal! Alternatively, you can run the process in detached mode via ```rp run --detach=True ...```. Note that you will not receive any console prints while detached.
 
 You can specify different hardware constraints to the `run` command:
 ```rp run --cpu=x --gpu=x --mem=x ...```
