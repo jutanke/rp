@@ -62,7 +62,7 @@ def rp(tool, script, cpu, gpu, mem, pid, outfile_name, debug, detach):
     elif tool == "freeze":
         freeze(path, debug=debug)
     elif tool == "kill":
-        kill(pid)
+        kill(pid, debug=debug)
     else:
         fail(f"tool <{tool}> not found")
 

@@ -66,7 +66,11 @@ def run(
 
     may_I_be_scheduled = False
     while not may_I_be_scheduled:
-        may_I_be_scheduled, gpu_device_ids = network.may_I_be_scheduled(
+        (
+            may_I_be_scheduled,
+            gpu_device_ids,
+            youhavebeenkilled,
+        ) = network.may_I_be_scheduled(
             START_TIME,
             gpus=gpu,
             cpu=cpu,
@@ -76,6 +80,9 @@ def run(
             docker_image=tag,
             script=script,
         )
+        if youhavebeenkilled:
+            warning("you have been killed")
+            exit()
         if may_I_be_scheduled:
             break
 

@@ -16,6 +16,8 @@ from typing import List
 from shutil import copyfile, move
 import rp.console as console
 
+from subprocess import call
+
 from sys import exit
 
 
@@ -244,6 +246,11 @@ def get_paths_for_mapping(directory):
     fname = get_paths_fname(directory)
     with open(fname, "r") as f:
         return json.load(f)
+
+
+def kill_container(name: str):
+    """"""
+    return call(f"docker kill {name}", shell=True)
 
 
 def get_running_container_names():
