@@ -16,9 +16,9 @@ rp init
 This will create the following file structure:
 * `/home/{user}/my_project`
   * `/docker`
-    * `Dockerfile`: base Dockerfile. Only change fundamental things such as the base image in here
+    * `Dockerfile`: base Dockerfile. **Add your RUN docker commands into this file!**
     * `bashhook.sh`: script that is being called when the container starts. If possible do NOT use this to install libraries or to compile code as this will be executed at every run!
-    * `hook_pre_useradd`: **Add your `RUN` docker commands into this file!** The `RUN`s in this file will be executed BEFORE the user is changed to the local user
+    * `hook_pre_useradd`: the `RUN`s in this file will be executed BEFORE the user is changed to the local user
     * `hook_post_useradd`: similar to `hook_pre_useradd`, however, the `RUN`s will be executed as local user rather than `root`. **Only use this if you know what you are doing!**
   * `/.rp`
     * `info.json`
@@ -56,7 +56,6 @@ which we can execute within the container:
 ```
 rp run --script="hello.sh funny-name"
 ```
-**Important!** Do NOT exit the program via `Ctrl+C` while it is in `build` mode (`docker build`) - this can lead to a potentially broken `rp` project! Docker may fail but let it fail on its own!
 
 Once you see the message
 ```
@@ -76,4 +75,20 @@ rp run --outfile_name="myrun" --script="xxxx"
 This will create a file `/home/{user}/my_project/.rp/logs/myrun_{datetime}.log`.
 
 To **kill** a run you can either `Ctrl+C` the terminal or you can simply `docker kill` the respective container. Note that the container name is being printed to terminal as:
-```waiting to be scheduled as <{containe name}>```
+```waiting to be scheduled as <{containe name}>```.
+Each container is named using 4 random integers ```xxxx```. You can also kill a process (even when it is just being queued!) via ```rp```:
+```bash
+rp kill pid=xxxx
+```
+
+## How to debug your container
+You can get a bash into your container by simply:
+```
+rp enter
+```
+Note that this will operate just like ```rp run``` so you might have to wait to be scheduled. 
+**Important**: Please do NOT leave a bash open if you are not using it as it will block the resources until freed!
+Note that you can change the resource requirements on the fly similar to ```rp run```:
+```
+rp enter --cpu=1 --mem=4 --gpu=0
+```
