@@ -4,7 +4,7 @@ import rp.network as network
 from os.path import join, isdir
 from time import time, sleep
 
-VERSION = "0.1.5"
+VERSION = "0.1.6"
 
 
 def info(directory: str, debug: bool):
