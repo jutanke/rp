@@ -70,7 +70,7 @@ def build(directory: str, outfile_name: str, script: str):
 
         D.write(
             'RUN echo "'
-            + f"source home/user/{project_name}/docker/bashhook.sh\n"
+            + f"source home/user/{project_name}/docker/bashhook.sh\\n"
             + f'cd /home/user/{project_name} && bash {script}{pipe}"'
             + " >> /home/user/run.sh"
         )
@@ -84,7 +84,7 @@ def build(directory: str, outfile_name: str, script: str):
 
     r = call(f"cd {dockerdir} && docker build --tag='{tag}' .", shell=True)
 
-    move(dockerfile_bkp, dockerfile)
+    # move(dockerfile_bkp, dockerfile)
     if r != 0:
         console.fail("building failed\n")
         exit(0)
