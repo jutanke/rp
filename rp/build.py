@@ -70,7 +70,7 @@ def build(directory: str, outfile_name: str, script: str):
 
         D.write(
             'RUN echo "'
-            + f"source home/user/{project_name}/docker/bashhook.sh\\n"
+            + f"source /home/user/{project_name}/docker/bashhook.sh\\n"
             + f'cd /home/user/{project_name} && bash {script}{pipe}"'
             + " >> /home/user/run.sh"
         )
