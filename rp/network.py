@@ -5,7 +5,7 @@ import rp.utils as utils
 from random import randint
 
 
-PORT = 1235
+PORT = 1234
 
 
 def server_function(socket, debug: bool):
