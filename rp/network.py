@@ -5,7 +5,7 @@ import rp.utils as utils
 from random import randint
 
 
-PORT = 1234
+PORT = 1235
 
 
 def server_function(socket, debug: bool):
@@ -156,10 +156,13 @@ def server_function(socket, debug: bool):
                         print("\telapsed", time.time() - _start)
                         print("[debug|server] step 2: get free resources")
                         _start = time.time()
-                    free_cpu, free_mem, free_gpus = utils.get_free_resources_cached(
+                    """ returns a list of free cpu cores """
+                    free_cpus, free_mem, free_gpus = utils.get_free_resources_cached(
                         debug=debug
                     )
                     free_gpus = set(free_gpus)
+                    if debug:
+                        print(f"[debug|server] got cpus: {free_cpus},  gpus: {free_gpus}")
 
                     # step 3: add resource of staged processes
                     if debug:
@@ -167,13 +170,17 @@ def server_function(socket, debug: bool):
                         print("[debug|server] step 3: add resources of staged procs")
                         _start = time.time()
                     for proc in STAGING.values():
-                        free_cpu -= proc["cpu"]
                         free_mem -= proc["mem"]
                         for gpuid in proc["gpus"]:
                             if gpuid in free_gpus:
                                 free_gpus.remove(gpuid)
 
+                        for cpuid in proc['cpus']:
+                            if cpuid in free_cpus:
+                                free_cpus.remove(cpuid)
+
                     free_gpus = list(free_gpus)
+                    free_cpus = list(free_cpus)
 
                     # step 4: sort all surviving entries by age
                     if debug:
@@ -190,8 +197,8 @@ def server_function(socket, debug: bool):
 
                         if debug:
                             print(
-                                f"\t[debug|server] cpu fit? {free_cpu} vs {_cpu}",
-                                free_cpu - _cpu,
+                                f"\t[debug|server] cpu fit? {len(free_cpus)} vs {_cpu}",
+                                len(free_cpus) - _cpu,
                             )
                             print(
                                 f"\t[debug|server] mem fit? {free_mem} vs {_mem}",
@@ -204,7 +211,7 @@ def server_function(socket, debug: bool):
 
                         # do the resources fit?
                         if (
-                            free_cpu - _cpu >= 0
+                            len(free_cpus) - _cpu >= 0
                             and free_mem - _mem >= 0
                             and len(free_gpus) - _gpus >= 0
                         ):
@@ -214,19 +221,27 @@ def server_function(socket, debug: bool):
                                 break
                     if you_may:
                         selected_gpus = []
+                        selected_cpus = []
                         for _ in range(gpus):
                             selected_gpus.append(free_gpus.pop(0))
 
+                        for _ in range(cpu):
+                            selected_cpus.append(free_cpus.pop(0))
+
                         STAGING[unique_id] = {
                             "placed_time": NOW,
-                            "cpu": cpu,
+                            "cpus": selected_cpus,
                             "gpus": selected_gpus,
                             "mem": mem,
                         }
 
                         del CURRENT_QUEUE[unique_id]
 
-                        socket.send_json({"msg": "youmay", "gpus": selected_gpus})
+                        selected_cpus_str = ",".join([str(c) for c in selected_cpus])
+
+                        if debug:
+                            print(f"\t[debug|server]: assign cpus {selected_cpus_str} to job")
+                        socket.send_json({"msg": "youmay", "gpus": selected_gpus, 'cpus': selected_cpus_str})
                     else:
                         socket.send_json({"msg": "youmaynot"})
                     if debug:
@@ -248,6 +263,7 @@ def may_I_be_scheduled(
     result = False
     youhavebeenkilled = False
     gpu_devices = []
+    cpu_cores = []
     try:
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
@@ -273,6 +289,7 @@ def may_I_be_scheduled(
             result = message["msg"] == "youmay"
             if result:
                 gpu_devices = message["gpus"]
+                cpu_cores = message['cpus']
             else:
                 youhavebeenkilled = message["msg"] == "youhavebeenkilled"
         else:
@@ -280,7 +297,7 @@ def may_I_be_scheduled(
     except:
         result = False
 
-    return result, gpu_devices, youhavebeenkilled
+    return result, gpu_devices, youhavebeenkilled, cpu_cores
 
 
 def kill(pid: int, debug=False):

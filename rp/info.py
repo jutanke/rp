@@ -77,10 +77,10 @@ def info(directory: str, debug: bool):
     mem_used = 1  # make sure that at least 1gb remains free!!
     for proc in utils.get_currently_running_docker_procs(debug):
         console.write(f"{proc.docker_name} @{proc.image_name}")
-        console.write(f"\tcpu = {proc.cpu}\n\tmem = {proc.mem}g")
+        console.write(f"\tcpu = {proc.cpus}\n\tmem = {proc.mem}g")
         console.write(f"\tgpus = {proc.gpu_devices}")
 
-        used_cpus += proc.cpu
+        used_cpus += len(proc.cpus)
         mem_used += proc.mem
 
         elapsed_in_min = (NOW - proc.start_time) / 60
