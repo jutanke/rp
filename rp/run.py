@@ -70,6 +70,7 @@ def run(
             may_I_be_scheduled,
             gpu_device_ids,
             youhavebeenkilled,
+            cpu_cores
         ) = network.may_I_be_scheduled(
             START_TIME,
             gpus=gpu,
@@ -102,7 +103,8 @@ def run(
     docker_exec_command = "docker run"
     docker_exec_command += f' --shm-size="{docker_shm}" '
     docker_exec_command += f'--memory="{mem}g" '
-    docker_exec_command += f'--cpus="{cpu}" '
+    docker_exec_command += f'--cpuset-cpus="{cpu_cores}" '
+    #docker_exec_command += f'--cpus="{cpu}" '
 
     if gpu > 0:
         docker_exec_command += "--gpus '" + '"device='

@@ -1,6 +1,7 @@
 import pwd
 import os
 import json
+import re
 from os.path import join, isfile
 from typing import Dict
 from datetime import datetime
@@ -24,7 +25,7 @@ from sys import exit
 RunningProcess = namedtuple(
     "RunningProcess",
     [
-        "cpu",
+        "cpus",
         "mem",
         "shm_size",
         "gpu_devices",
@@ -64,6 +65,12 @@ FORBIDDEN_CHARACTERS = [
     "}",
 ]
 
+
+def convert(x: str):
+    """ Converts a string range into a list of integers """
+    return sum((i if len(i) == 1 else list(range(i[0], i[1]+1))
+               for i in ([int(j) for j in i if j] for i in
+               re.findall('(\d+),?(?:-(\d+))?', x))), [])
 
 def check_if_string_contains_forbidden_symbols(txt: str) -> bool:
     global FORBIDDEN_CHARACTERS
@@ -151,33 +158,35 @@ def get_free_resources_cached(cached_s=2.0, debug=False):
     if recalc:
         if debug:
             print("[debug|get_free_resources_cached] recalc!")
-        free_cpu, free_mem, free_gpus = get_free_resources(debug)
+        free_cpus, free_mem, free_gpus = get_free_resources(debug)
         CACHE[key] = {
             "last_time": now,
-            "free_cpu": free_cpu,
+            "free_cpus": free_cpus,
             "free_mem": free_mem,
             "free_gpus": free_gpus,
         }
     else:
         if debug:
             print("[debug|get_free_resources_cached] cached!")
-        free_cpu = CACHE[key]["free_cpu"]
+        free_cpus = CACHE[key]["free_cpus"]
         free_mem = CACHE[key]["free_mem"]
         free_gpus = CACHE[key]["free_gpus"]
 
-    return free_cpu, free_mem, free_gpus
+    return free_cpus, free_mem, free_gpus
 
 
 def get_free_resources(debug: bool):
     free_cpu = get_ncpu()
+    available_cpus = set(range(free_cpu))
     free_mem, _ = get_memory()
     for proc in get_currently_running_docker_procs(debug=debug):
-        free_cpu -= proc.cpu
+        available_cpus = available_cpus.symmetric_difference(set(proc.cpus))
+        #free_cpu -= proc.cpus
         free_mem -= proc.mem
 
     free_gpus = get_free_gpu_device_ids()
 
-    return free_cpu, free_mem, free_gpus
+    return available_cpus, free_mem, free_gpus
 
 
 def get_unique_id(settings):
@@ -327,7 +336,9 @@ def get_currently_running_docker_procs(debug: bool) -> List[RunningProcess]:
 
             container = json.loads(dev)
 
-            cpu = container["NanoCpus"] / 1000000000
+            #cpu = container["NanoCpus"] / 1000000000
+            cpus = convert(container['CpusetCpus'])
+
             shm_size = container["ShmSize"] / (1024 ** 3)
             mem = container["Memory"] / (1024 ** 3)
 
@@ -343,7 +354,7 @@ def get_currently_running_docker_procs(debug: bool) -> List[RunningProcess]:
 
             running_processes.append(
                 RunningProcess(
-                    cpu=cpu,
+                    cpus=cpus,
                     mem=mem,
                     shm_size=shm_size,
                     gpu_devices=device_ids,
