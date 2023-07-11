@@ -1,1 +1,23 @@
+The following steps are for troubleshooting the following error:
+Error: no device found "" with [[gpu]] capabilities
+
+nano nvidia-container-runtime-script.sh
+ 
+    curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | \
+    sudo apt-key add -
+    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+    sudo apt-get update
+
+sh nvidia-container-runtime-script.sh
+
+sudo apt-get install nvidia-container-runtime
+which nvidia-container-runtime-hook
+nvidia-container-toolkit
 sudo systemctl restart docker
+
+docker run -it --rm --gpus all ubuntu nvidia-smi
+
+
+if nothing works, reinstall docker amd try all the above steps from the start
